@@ -118,6 +118,10 @@ for check_idx = 1:numel(check_results)
     % Print to the corrent output.
     fprintf(fid, '%s\n', lint_str);
 end
+% Close the open file.
+if fid>2
+    fclose(fid);
+end
 %%
 function [fcn_name, complexity] = get_complexity(result)
 % Get the message.
@@ -128,6 +132,4 @@ fcn_name = fcn_split{2};
 % Parse for complexity.
 split = strsplit(message, ' ');
 complexity = sscanf(split{end}, '%d');
-
-
 %------------- END CODE ----------------
