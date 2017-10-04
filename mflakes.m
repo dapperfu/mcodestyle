@@ -25,13 +25,11 @@ function mflakes(varargin)
 %------------- BEGIN CODE --------------
 %% Input Processing
 % If not called with any arguments and in a Jenkins run.
-if nargin==0 && jenkins.injenkins
-    % Get all environment variables.
-    env = jenkins.getenvall;
+if nargin==0 && ~isempty(getenv('WORKSPACE'))
     % Set the base_dir to the workspace.
-    base_dir =  env('WORKSPACE');
+    base_dir =  getenv('WORKSPACE');
     % Set the logfile_base to the job name + suffix.
-    log_file_base = sprintf('%s.mflakes.log', env('JOB_BASE_NAME'));
+    log_file_base = sprintf('%s.mflakes.log', getenv('JOB_BASE_NAME'));
     % Save the logfile to the workspace for gathering.
     log_file = fullfile(base_dir, log_file_base);
 else
@@ -70,6 +68,10 @@ for file_idx = 1:numel(files)
     file = files{file_idx};
     % Check the file and fprintf destination.
     check_file(file, fid)
+end
+% Close the open file.
+if fid>2
+    fclose(fid);
 end
 
 
@@ -117,10 +119,6 @@ for check_idx = 1:numel(check_results)
         check.message);
     % Print to the corrent output.
     fprintf(fid, '%s\n', lint_str);
-end
-% Close the open file.
-if fid>2
-    fclose(fid);
 end
 %%
 function [fcn_name, complexity] = get_complexity(result)
