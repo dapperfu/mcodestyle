@@ -6,29 +6,51 @@ function mflakes(varargin)
 %
 % Inputs:
 %	input1 - InputDescription
-%	input2 - InputDescription
-%	input3 - InputDescription
-%
-% Outputs:
-%	output1 - OutputDescription
-%	output2 - OutputDescription
 %
 % Example:
-%	[output1,output2] = mflakes(directory, options)
-%	[output1,output2] = mflakes(options)
+%	mflakes
 %
 % See also:
-
+% Regex:
+%     ^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|
+%
+% Mapping Script:
+%     import hudson.plugins.warnings.parser.Warning
+%     import hudson.plugins.analysis.util.model.Priority
+% 
+%     String fileName = matcher.group(1)
+%     Integer lineNumber = Integer.parseInt(matcher.group(2))
+%     String type =  matcher.group(3)
+%     String category = matcher.group(4)
+%     String message = matcher.group(5)
+%     String severity = matcher.group(6)
+% 
+%     Priority priority = Priority.NORMAL
+% 
+%     switch (severity) {
+%         case "H":
+%             priority = Priority.HIGH
+%             break
+%         case "N":
+%             priority = Priority.NORMAL
+%             break
+%         case "L":
+%             priority = Priority.LOW
+%             break
+%         default:
+%             priority = Priority.NORMAL
+%     }
+% 
+%     return new Warning(fileName, lineNumber, type, category, message, priority)
+  
 % Author: Jed Frey
 % October 2017
-
 %------------- BEGIN CODE --------------
 %% Input Processing
 % If not called with any arguments and in a Jenkins run.
 if nargin==0 && ~isempty(getenv('WORKSPACE'))
     % Set the base_dir to the workspace.
     base_dir =  getenv('WORKSPACE');
-    % Set the logfile_base to the job name + suffix.
     log_file_base = sprintf('%s.mflakes.log', getenv('JOB_BASE_NAME'));
     % Save the logfile to the workspace for gathering.
     log_file = fullfile(base_dir, log_file_base);
@@ -42,7 +64,7 @@ else
     end
     if nargin<2
         % Default to redtext.
-        log_file='stderr';
+        log_file='stdout';
     else
         % Otherwise grab the first argument.
         log_file = varargin{2};
@@ -53,9 +75,6 @@ end
 if strcmp(log_file, 'stdout')
     % The command window.
     fid=1;
-elseif strcmp(log_file, 'stderr')
-    % The command window in red text.
-    fid=2;
 else
     % The log file.
     fid = fopen(log_file, 'w');
@@ -77,10 +96,11 @@ end
 
 function check_file(file, fid)
 % Limit to report as a 'problem'.
-MCCABE_LIMIT = 10;
+MCCABE_LOW_LIMIT = 5;   % McCabe limit for low level
+MCCABE_NORM_LIMIT = 10; % McCabe limit for normal level
+MCCAME_HIGH_LIMIT = 15; % McCabe limit for high level
 % Severity configuration. Otherwise defaults to Normal.
 SEVERITY_CFG=struct();
-SEVERITY_CFG.CABE = 'H';
 SEVERITY_CFG.DEPGENAM = 'H';
 SEVERITY_CFG.FXSET = 'L';
 % Run checkcode and gather the results.
@@ -90,43 +110,54 @@ SEVERITY_CFG.FXSET = 'L';
 for check_idx = 1:numel(check_results)
     % Get the current check in loop.
     check            = check_results(check_idx);
-    
     % Strip off of the base folder since file is an absolute path.
     checked_file_rel = strrep(file, pwd, '.');
+    checked_file_rel = checked_file_rel(3:end);
     % If the check is McCabe complexity.
-    if strcmp(check.id, 'CABE')
+    if strcmp(check.id, 'CABE') || strcmp(check.id, 'SCABE')
         % Get the current complexity.
-        [~, complexity] = get_complexity(check);
-        % If it is less than the threshold, move on.
-        if complexity<MCCABE_LIMIT
-            continue
+        complexity = get_complexity(check);
+        % If the complexity is lower than the low limit.
+        if complexity < MCCABE_LOW_LIMIT
+            % Continue and do nothing.
+            continue;
+        elseif complexity < MCCABE_NORM_LIMIT
+            % Set severity to low.
+            severity = 'L';
+        elseif complexity < MCCAME_HIGH_LIMIT
+            % Set severity to normal.
+            severity = 'N';
+        else
+            % Set severity to high.
+            severity = 'H';
         end
-    end
-    % If the ID is in the severity config struct.
-    if isfield(SEVERITY_CFG, check.id)
+    elseif isfield(SEVERITY_CFG, check.id)
+        % If the ID is in the severity config struct.
         % Use that value.
         severity = SEVERITY_CFG.(check.id);
     else
-        % Default to Normal.
-        severity = 'N';
+        if check.fix
+            % If if an automatic fix is available. High since it requires no 
+            % effort on the programmer's part to fix.
+            severity = 'H';
+        else
+            % Normal is default if no fix is available.
+            severity = 'N';
+        end
     end
     % Generate the lint line string.
-    lint_str = sprintf('%s:%d [%s:%c] %s', ...
-        checked_file_rel, ...
-        check.line, ...
-        check.id, ....
-        severity, ...
-        check.message);
-    % Print to the corrent output.
-    fprintf(fid, '%s\n', lint_str);
+    fprintf(fid, '%s|', checked_file_rel);
+    fprintf(fid, '%d|', check.line);
+    fprintf(fid, '%s|', check.id);
+    fprintf(fid, '%s|', check.id);
+    fprintf(fid, '%s|', check.message);
+    fprintf(fid, '%s|', severity);
+    fprintf(fid, '\n');
 end
 %%
-function [fcn_name, complexity] = get_complexity(result)
+function [complexity] = get_complexity(result)
 % Get the message.
 message = result.message;
-% Split off the function name.
-fcn_split = strsplit(message, '''');
-fcn_name = fcn_split{2};
 % Parse for complexity.
 split = strsplit(message, ' ');
 complexity = sscanf(split{end}, '%d');
