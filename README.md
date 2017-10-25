@@ -20,7 +20,7 @@ Define a new parser at http://[jenkins-url]/configure and create a new parser in
 ### Regex
 
 ```
-^(.*):([\d]+) \[(.*):([\w])\] (.*)
+^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|
 ```
 
 ### Mapping Script
@@ -32,27 +32,23 @@ import hudson.plugins.analysis.util.model.Priority
 String fileName = matcher.group(1)
 Integer lineNumber = Integer.parseInt(matcher.group(2))
 String type =  matcher.group(3)
-String category = matcher.group(3)
-String severity = matcher.group(4)
+String category = matcher.group(4)
 String message = matcher.group(5)
+String severity = matcher.group(6)
 
 Priority priority = Priority.NORMAL
 
 switch (severity) {
     case "H":
-        category = "mflake errors"
         priority = Priority.HIGH
         break
     case "N":
-        category = "mflake warnings"
         priority = Priority.NORMAL
         break
     case "L":
-        category = "mflake info"
         priority = Priority.LOW
         break
     default:
-        category = "mflake unknown"
         priority = Priority.NORMAL
 }
 
