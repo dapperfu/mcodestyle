@@ -146,12 +146,10 @@ for check_idx = 1:numel(check_results)
         end
     end
     % Generate the lint line string.
-    fprintf(fid, '%s|', checked_file_rel);
-    fprintf(fid, '%d|', check.line);
-    fprintf(fid, '%s|', check.id);
-    fprintf(fid, '%s|', check.id);
-    fprintf(fid, '%s|', check.message);
-    fprintf(fid, '%s|', severity);
+    fprintf(fid, '%s:', checked_file_rel);
+    fprintf(fid, '%d:1: ', check.line);
+    fprintf(fid, '%s ', check.id);
+    fprintf(fid, '%s', check.message);
     fprintf(fid, '\n');
 end
 %%
