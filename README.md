@@ -5,6 +5,8 @@ This tool has been superceeded by:
 - [```codeIssues```](https://www.mathworks.com/help/matlab/ref/codeissues.html?s_tid=mwa_osa_a) released with MATLAB R2022b.
 - [Jenkin's Warnings-NG](https://www.jenkins.io/doc/pipeline/steps/warnings-ng/) plugin.
 
+See [matlab-codeissues-jenkins](https://github.com/dapperfu/matlab-codeissues-jenkins) for a working example.
+
 # matlab_mflakes
 pyflakes for matlab.
    
